@@ -120,6 +120,7 @@ class RecipeListResponse(RecipeBase):
     """Version allégée pour les listes"""
     id: int
     auteur_id: int
+    auteur: UserResponse
 
     class Config:
         from_attributes = True
