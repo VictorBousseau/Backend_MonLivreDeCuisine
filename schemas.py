@@ -1,9 +1,10 @@
 """
 Schémas Pydantic pour validation des données API
 """
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import Optional, List
 from enum import Enum
+import json
 
 
 class CategorieRecette(str, Enum):
@@ -90,6 +91,18 @@ class RecipeBase(BaseModel):
     temperature: Optional[int] = Field(None, ge=0)
     tags: Optional[List[str]] = []
 
+    @field_validator('tags', mode='before')
+    @classmethod
+    def parse_tags(cls, v):
+        if v is None:
+            return []
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except:
+                return []
+        return v
+
 
 class RecipeCreate(RecipeBase):
     ingredients: List[IngredientCreate] = []
@@ -114,16 +127,6 @@ class RecipeResponse(RecipeBase):
     ingredients: List[IngredientResponse] = []
     steps: List[StepResponse] = []
 
-    @classmethod
-    def model_validate(cls, obj, *args, **kwargs):
-        import json
-        if hasattr(obj, 'tags') and obj.tags and isinstance(obj.tags, str):
-            try:
-                obj.tags = json.loads(obj.tags)
-            except:
-                obj.tags = []
-        return super().model_validate(obj, *args, **kwargs)
-
     class Config:
         from_attributes = True
 
@@ -133,16 +136,6 @@ class RecipeListResponse(RecipeBase):
     id: int
     auteur_id: int
     auteur: UserResponse
-
-    @classmethod
-    def model_validate(cls, obj, *args, **kwargs):
-        import json
-        if hasattr(obj, 'tags') and obj.tags and isinstance(obj.tags, str):
-            try:
-                obj.tags = json.loads(obj.tags)
-            except:
-                obj.tags = []
-        return super().model_validate(obj, *args, **kwargs)
 
     class Config:
         from_attributes = True
