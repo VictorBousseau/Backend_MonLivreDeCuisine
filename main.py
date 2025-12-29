@@ -40,11 +40,16 @@ origins = [
     frontend_url,
     "http://localhost:5173",
     "http://localhost:3000",
+    "https://frontend-mon-livre-de-cuisibe.vercel.app",
+    "https://*.vercel.app",
 ]
+
+# Autoriser toutes les origines si en mode debug
+allow_all = os.getenv("CORS_ALLOW_ALL", "false").lower() == "true"
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"] if allow_all else origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
