@@ -153,9 +153,12 @@ def get_recipes(
     if auteur_id:
         query = query.filter(Recipe.auteur_id == auteur_id)
     
-    # Filtre par tag
+    # Filtre par tag (les tags sont stockés en JSON: ["tag1", "tag2"])
     if tag:
-        query = query.filter(Recipe.tags.ilike(f"%{tag}%"))
+        # Recherche le tag dans le JSON string (avec ou sans guillemets)
+        query = query.filter(
+            Recipe.tags.ilike(f'%"{tag}"%') | Recipe.tags.ilike(f"%{tag}%")
+        )
     
     recipes = query.order_by(Recipe.categorie, Recipe.titre).offset(skip).limit(limit).all()
     return recipes
