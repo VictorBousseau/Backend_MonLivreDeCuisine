@@ -194,7 +194,7 @@ def create_recipe(
         temps_prep=recipe.temps_prep,
         temps_cuisson=recipe.temps_cuisson,
         temperature=recipe.temperature,
-        tags=json.dumps(recipe.tags) if recipe.tags else None,
+        tags=json.dumps(recipe.tags, ensure_ascii=False) if recipe.tags else None,
         auteur_id=current_user.id
     )
     db.add(db_recipe)
@@ -258,7 +258,7 @@ def update_recipe(
     
     # Mettre à jour les tags
     if "tags" in update_data:
-        db_recipe.tags = json.dumps(update_data["tags"]) if update_data["tags"] else None
+        db_recipe.tags = json.dumps(update_data["tags"], ensure_ascii=False) if update_data["tags"] else None
     
     # Mettre à jour les ingrédients si fournis
     if recipe_update.ingredients is not None:
