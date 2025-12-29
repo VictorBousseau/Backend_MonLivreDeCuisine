@@ -55,13 +55,14 @@ except Exception as e:
 
 # Migration: ajouter Gourmandises à l'enum PostgreSQL
 try:
-    with engine.connect() as conn:
+    with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
         # PostgreSQL: ajouter une nouvelle valeur à l'enum
+        # Note: ALTER TYPE ne peut pas être exécuté dans une transaction
         conn.execute(text("ALTER TYPE categorierecette ADD VALUE IF NOT EXISTS 'Gourmandises'"))
-        conn.commit()
         print("✅ Migration: Gourmandises ajouté à l'enum")
 except Exception as e:
     # SQLite ou valeur déjà existante
+    print(f"Migration note: {e}")
     pass
 
 # Application FastAPI
