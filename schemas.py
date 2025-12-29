@@ -85,7 +85,7 @@ class StepResponse(StepBase):
 
 class RecipeBase(BaseModel):
     titre: str = Field(..., min_length=2, max_length=200)
-    categorie: CategorieRecette
+    categorie: str # Relaxed to str to allow any value from DB
     temps_prep: Optional[int] = Field(None, ge=0)
     temps_cuisson: Optional[int] = Field(None, ge=0)
     temperature: Optional[int] = Field(None, ge=0)
@@ -105,13 +105,14 @@ class RecipeBase(BaseModel):
 
 
 class RecipeCreate(RecipeBase):
+    categorie: CategorieRecette # Enforce Enum for creation
     ingredients: List[IngredientCreate] = []
     steps: List[StepCreate] = []
 
 
 class RecipeUpdate(BaseModel):
     titre: Optional[str] = Field(None, min_length=2, max_length=200)
-    categorie: Optional[CategorieRecette] = None
+    categorie: Optional[CategorieRecette] = None # Enforce Enum for update
     temps_prep: Optional[int] = Field(None, ge=0)
     temps_cuisson: Optional[int] = Field(None, ge=0)
     temperature: Optional[int] = Field(None, ge=0)
