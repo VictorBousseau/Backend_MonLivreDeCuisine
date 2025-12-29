@@ -53,6 +53,17 @@ try:
 except Exception as e:
     pass
 
+# Migration: ajouter Gourmandises à l'enum PostgreSQL
+try:
+    with engine.connect() as conn:
+        # PostgreSQL: ajouter une nouvelle valeur à l'enum
+        conn.execute(text("ALTER TYPE categorierecette ADD VALUE IF NOT EXISTS 'Gourmandises'"))
+        conn.commit()
+        print("✅ Migration: Gourmandises ajouté à l'enum")
+except Exception as e:
+    # SQLite ou valeur déjà existante
+    pass
+
 # Application FastAPI
 app = FastAPI(
     title="MonLivreDeCuisine API",
