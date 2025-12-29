@@ -508,7 +508,16 @@ def root():
 def debug_error(db: Session = Depends(get_db)):
     try:
         results = db.query(Recipe).all()
-        return {"status": "ok", "count": len(results), "sample": [r.titre for r in results[:5]]}
+        # Convertir en dict pour éviter problème de sérialisation si Enum
+        sample = []
+        for r in results[:10]:
+            sample.append({
+                "id": r.id,
+                "titre": r.titre,
+                "categorie": str(r.categorie), # Force string
+                "tags": r.tags
+            })
+        return {"status": "ok", "count": len(results), "sample": sample}
     except Exception as e:
         import traceback
         return {"status": "error", "message": str(e), "traceback": traceback.format_exc()}
