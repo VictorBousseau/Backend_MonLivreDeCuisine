@@ -21,9 +21,20 @@ from auth import (
     get_password_hash, authenticate_user, create_access_token,
     get_current_user, ACCESS_TOKEN_EXPIRE_MINUTES, get_user_by_email
 )
+from sqlalchemy import text
 
 # Création des tables
 Base.metadata.create_all(bind=engine)
+
+# Migration: ajouter is_admin si la colonne n'existe pas
+try:
+    with engine.connect() as conn:
+        conn.execute(text("ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT FALSE"))
+        conn.commit()
+        print("✅ Migration: colonne is_admin ajoutée")
+except Exception as e:
+    # La colonne existe déjà, c'est normal
+    pass
 
 # Application FastAPI
 app = FastAPI(
