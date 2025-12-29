@@ -1,0 +1,11 @@
+# Dépendances
+__pycache__/
+*.pyc
+.env
+
+# Base de données locale
+*.db
+
+# IDE
+.vscode/
+.idea/
