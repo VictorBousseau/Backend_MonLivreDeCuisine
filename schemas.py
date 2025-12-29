@@ -11,6 +11,7 @@ class CategorieRecette(str, Enum):
     ENTREE = "Entrée"
     PLAT = "Plat"
     DESSERT = "Dessert"
+    GOURMANDISES = "Gourmandises"
 
 
 # ============== USER SCHEMAS ==============
@@ -31,6 +32,7 @@ class UserLogin(BaseModel):
 
 class UserResponse(UserBase):
     id: int
+    is_admin: bool = False
 
     class Config:
         from_attributes = True

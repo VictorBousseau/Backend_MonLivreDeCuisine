@@ -112,15 +112,26 @@ def get_me(current_user: User = Depends(get_current_user)):
 @app.get("/recipes", response_model=List[RecipeListResponse])
 def get_recipes(
     categorie: CategorieRecette = None,
+    search: str = None,
+    auteur_id: int = None,
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db)
 ):
-    """Liste toutes les recettes, optionnellement filtrées par catégorie"""
+    """Liste toutes les recettes avec filtres optionnels"""
     query = db.query(Recipe)
     
+    # Filtre par catégorie
     if categorie:
         query = query.filter(Recipe.categorie == categorie)
+    
+    # Recherche par titre
+    if search:
+        query = query.filter(Recipe.titre.ilike(f"%{search}%"))
+    
+    # Filtre par auteur
+    if auteur_id:
+        query = query.filter(Recipe.auteur_id == auteur_id)
     
     recipes = query.order_by(Recipe.categorie, Recipe.titre).offset(skip).limit(limit).all()
     return recipes
@@ -324,6 +335,77 @@ def search_frigo(search: FrigoSearchRequest, db: Session = Depends(get_db)):
     return results
 
 
+# ============== ADMIN ENDPOINTS ==============
+
+def require_admin(current_user: User = Depends(get_current_user)):
+    """Vérifie que l'utilisateur est admin"""
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Accès réservé aux administrateurs"
+        )
+    return current_user
+
+
+@app.get("/admin/users", response_model=List[UserResponse])
+def get_all_users(
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """Liste tous les utilisateurs (admin only)"""
+    return db.query(User).all()
+
+
+@app.delete("/admin/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def admin_delete_user(
+    user_id: int,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """Supprime un utilisateur (admin only)"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
+    if user.id == admin.id:
+        raise HTTPException(status_code=400, detail="Impossible de supprimer votre propre compte")
+    db.delete(user)
+    db.commit()
+    return None
+
+
+@app.delete("/admin/recipes/{recipe_id}", status_code=status.HTTP_204_NO_CONTENT)
+def admin_delete_recipe(
+    recipe_id: int,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """Supprime n'importe quelle recette (admin only)"""
+    recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
+    if not recipe:
+        raise HTTPException(status_code=404, detail="Recette non trouvée")
+    db.delete(recipe)
+    db.commit()
+    return None
+
+
+@app.put("/admin/users/{user_id}/toggle-admin", response_model=UserResponse)
+def toggle_admin(
+    user_id: int,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """Promouvoir/rétrograder un utilisateur admin (admin only)"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
+    if user.id == admin.id:
+        raise HTTPException(status_code=400, detail="Impossible de modifier votre propre statut")
+    user.is_admin = not user.is_admin
+    db.commit()
+    db.refresh(user)
+    return user
+
+
 # ============== ROOT ENDPOINT ==============
 
 @app.get("/")
@@ -332,5 +414,6 @@ def root():
     return {
         "message": "Bienvenue sur MonLivreDeCuisine API",
         "docs": "/docs",
-        "version": "1.0.0"
+        "version": "2.0.0"
     }
+

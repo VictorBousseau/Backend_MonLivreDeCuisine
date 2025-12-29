@@ -2,7 +2,7 @@
 Modèles SQLAlchemy pour MonLivreDeCuisine
 Relations: User -> Recipes -> Ingredients/Steps
 """
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, Enum as SQLEnum
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, Enum as SQLEnum, Boolean
 from sqlalchemy.orm import relationship
 import enum
 
@@ -14,6 +14,7 @@ class CategorieRecette(str, enum.Enum):
     ENTREE = "Entrée"
     PLAT = "Plat"
     DESSERT = "Dessert"
+    GOURMANDISES = "Gourmandises"
 
 
 class User(Base):
@@ -24,6 +25,7 @@ class User(Base):
     nom = Column(String(100), nullable=False)
     email = Column(String(255), unique=True, index=True, nullable=False)
     hashed_password = Column(String(255), nullable=False)
+    is_admin = Column(Boolean, default=False)
 
     # Relation: un utilisateur peut avoir plusieurs recettes
     recipes = relationship("Recipe", back_populates="auteur", cascade="all, delete-orphan")
