@@ -417,6 +417,30 @@ def toggle_admin(
     return user
 
 
+@app.put("/admin/make-first-admin", response_model=UserResponse)
+def make_first_admin(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Promouvoir le premier admin - fonctionne UNIQUEMENT s'il n'y a aucun admin.
+    L'utilisateur connecté devient admin.
+    """
+    # Vérifier s'il y a déjà un admin
+    existing_admin = db.query(User).filter(User.is_admin == True).first()
+    if existing_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Un administrateur existe déjà. Utilisez l'endpoint toggle-admin."
+        )
+    
+    # Promouvoir l'utilisateur actuel
+    current_user.is_admin = True
+    db.commit()
+    db.refresh(current_user)
+    return current_user
+
+
 # ============== ROOT ENDPOINT ==============
 
 @app.get("/")
