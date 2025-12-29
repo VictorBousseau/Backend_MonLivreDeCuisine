@@ -37,7 +37,8 @@ class Recipe(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     titre = Column(String(200), nullable=False, index=True)
-    categorie = Column(SQLEnum(CategorieRecette), nullable=False)
+    # Utilisation de String au lieu de Enum pour plus de flexibilité et éviter les problèmes de migration
+    categorie = Column(String(50), nullable=False)
     temps_prep = Column(Integer, nullable=True)  # en minutes
     temps_cuisson = Column(Integer, nullable=True)  # en minutes
     temperature = Column(Integer, nullable=True)  # en °C

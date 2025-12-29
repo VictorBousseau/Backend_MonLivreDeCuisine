@@ -53,27 +53,20 @@ try:
 except Exception as e:
     pass
 
-# Migration: ajouter Gourmandises à l'enum PostgreSQL (Robuste)
+# Migration: Convertir categorie en VARCHAR pour éviter les problèmes d'Enum et supporter Gourmandises
 try:
     with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
-        print("🔍 Migration: Vérification enum Gourmandises...")
+        print("🔍 Migration: Conversion colonne categorie en VARCHAR...")
         if engine.dialect.name == 'postgresql':
-            # Introspection pour trouver le vrai nom de l'enum
-            result = conn.execute(text("SELECT t.typname FROM pg_type t JOIN pg_enum e ON t.oid = e.enumtypid WHERE e.enumlabel = 'Entrée' LIMIT 1"))
-            enum_name = result.scalar()
-            
-            if enum_name:
-                print(f"✅ Enum trouvé: {enum_name}")
-                conn.execute(text(f"ALTER TYPE {enum_name} ADD VALUE IF NOT EXISTS 'Gourmandises'"))
-                print(f"✅ Migration: Gourmandises ajouté à l'enum {enum_name}")
-            else:
-                conn.execute(text("ALTER TYPE categorierecette ADD VALUE IF NOT EXISTS 'Gourmandises'"))
-                print("✅ Migration: Gourmandises ajouté (défaut)")
+            # Convertir l'enum en text/varchar
+            conn.execute(text("ALTER TABLE recipes ALTER COLUMN categorie TYPE VARCHAR(50) USING categorie::text"))
+            print("✅ Migration: Colonne categorie convertie en VARCHAR (PostgreSQL)")
         else:
-            print("ℹ️ Migration ignorée (Pas PostgreSQL)")
+            # SQLite (déjà flexible)
+            print("ℹ️ Migration ignorée (SQLite)")
 
 except Exception as e:
-    print(f"❌ Erreur Migration Gourmandises: {e}")
+    print(f"Migration note (Varchar): {e}")
     pass
 
 # Application FastAPI
