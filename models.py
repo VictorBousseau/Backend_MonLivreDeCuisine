@@ -2,7 +2,7 @@
 Modèles SQLAlchemy pour MonLivreDeCuisine
 Relations: User -> Recipes -> Ingredients/Steps
 """
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, Enum as SQLEnum, Boolean
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, Enum as SQLEnum, Boolean, Text
 from sqlalchemy.orm import relationship
 import enum
 
@@ -41,6 +41,7 @@ class Recipe(Base):
     temps_prep = Column(Integer, nullable=True)  # en minutes
     temps_cuisson = Column(Integer, nullable=True)  # en minutes
     temperature = Column(Integer, nullable=True)  # en °C
+    tags = Column(Text, nullable=True)  # JSON array: ["Végétarien", "Été"]
     
     # Clé étrangère vers User
     auteur_id = Column(Integer, ForeignKey("users.id"), nullable=False)

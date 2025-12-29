@@ -33,7 +33,15 @@ try:
         conn.commit()
         print("✅ Migration: colonne is_admin ajoutée")
 except Exception as e:
-    # La colonne existe déjà, c'est normal
+    pass
+
+# Migration: ajouter tags si la colonne n'existe pas
+try:
+    with engine.connect() as conn:
+        conn.execute(text("ALTER TABLE recipes ADD COLUMN tags TEXT"))
+        conn.commit()
+        print("✅ Migration: colonne tags ajoutée")
+except Exception as e:
     pass
 
 # Application FastAPI
@@ -125,6 +133,7 @@ def get_recipes(
     categorie: CategorieRecette = None,
     search: str = None,
     auteur_id: int = None,
+    tag: str = None,
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db)
@@ -143,6 +152,10 @@ def get_recipes(
     # Filtre par auteur
     if auteur_id:
         query = query.filter(Recipe.auteur_id == auteur_id)
+    
+    # Filtre par tag
+    if tag:
+        query = query.filter(Recipe.tags.ilike(f"%{tag}%"))
     
     recipes = query.order_by(Recipe.categorie, Recipe.titre).offset(skip).limit(limit).all()
     return recipes
@@ -169,6 +182,8 @@ def create_recipe(
     current_user: User = Depends(get_current_user)
 ):
     """Crée une nouvelle recette (authentification requise)"""
+    import json
+    
     # Créer la recette
     db_recipe = Recipe(
         titre=recipe.titre,
@@ -176,6 +191,7 @@ def create_recipe(
         temps_prep=recipe.temps_prep,
         temps_cuisson=recipe.temps_cuisson,
         temperature=recipe.temperature,
+        tags=json.dumps(recipe.tags) if recipe.tags else None,
         auteur_id=current_user.id
     )
     db.add(db_recipe)
@@ -222,11 +238,13 @@ def update_recipe(
             detail="Recette non trouvée"
         )
     
-    if db_recipe.auteur_id != current_user.id:
+    if db_recipe.auteur_id != current_user.id and not current_user.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Vous n'êtes pas autorisé à modifier cette recette"
         )
+    
+    import json
     
     # Mettre à jour les champs de base
     update_data = recipe_update.model_dump(exclude_unset=True)
@@ -234,6 +252,10 @@ def update_recipe(
     for field in ["titre", "categorie", "temps_prep", "temps_cuisson", "temperature"]:
         if field in update_data and update_data[field] is not None:
             setattr(db_recipe, field, update_data[field])
+    
+    # Mettre à jour les tags
+    if "tags" in update_data:
+        db_recipe.tags = json.dumps(update_data["tags"]) if update_data["tags"] else None
     
     # Mettre à jour les ingrédients si fournis
     if recipe_update.ingredients is not None:

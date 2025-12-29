@@ -88,6 +88,7 @@ class RecipeBase(BaseModel):
     temps_prep: Optional[int] = Field(None, ge=0)
     temps_cuisson: Optional[int] = Field(None, ge=0)
     temperature: Optional[int] = Field(None, ge=0)
+    tags: Optional[List[str]] = []
 
 
 class RecipeCreate(RecipeBase):
@@ -101,6 +102,7 @@ class RecipeUpdate(BaseModel):
     temps_prep: Optional[int] = Field(None, ge=0)
     temps_cuisson: Optional[int] = Field(None, ge=0)
     temperature: Optional[int] = Field(None, ge=0)
+    tags: Optional[List[str]] = None
     ingredients: Optional[List[IngredientCreate]] = None
     steps: Optional[List[StepCreate]] = None
 
@@ -112,6 +114,16 @@ class RecipeResponse(RecipeBase):
     ingredients: List[IngredientResponse] = []
     steps: List[StepResponse] = []
 
+    @classmethod
+    def model_validate(cls, obj, *args, **kwargs):
+        import json
+        if hasattr(obj, 'tags') and obj.tags and isinstance(obj.tags, str):
+            try:
+                obj.tags = json.loads(obj.tags)
+            except:
+                obj.tags = []
+        return super().model_validate(obj, *args, **kwargs)
+
     class Config:
         from_attributes = True
 
@@ -121,6 +133,16 @@ class RecipeListResponse(RecipeBase):
     id: int
     auteur_id: int
     auteur: UserResponse
+
+    @classmethod
+    def model_validate(cls, obj, *args, **kwargs):
+        import json
+        if hasattr(obj, 'tags') and obj.tags and isinstance(obj.tags, str):
+            try:
+                obj.tags = json.loads(obj.tags)
+            except:
+                obj.tags = []
+        return super().model_validate(obj, *args, **kwargs)
 
     class Config:
         from_attributes = True
