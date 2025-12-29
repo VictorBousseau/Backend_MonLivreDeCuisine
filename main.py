@@ -6,7 +6,7 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from sqlalchemy import func, desc
+from sqlalchemy import func, desc, text
 from typing import List
 from datetime import timedelta
 
@@ -53,16 +53,27 @@ try:
 except Exception as e:
     pass
 
-# Migration: ajouter Gourmandises à l'enum PostgreSQL
+# Migration: ajouter Gourmandises à l'enum PostgreSQL (Robuste)
 try:
     with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
-        # PostgreSQL: ajouter une nouvelle valeur à l'enum
-        # Note: ALTER TYPE ne peut pas être exécuté dans une transaction
-        conn.execute(text("ALTER TYPE categorierecette ADD VALUE IF NOT EXISTS 'Gourmandises'"))
-        print("✅ Migration: Gourmandises ajouté à l'enum")
+        print("🔍 Migration: Vérification enum Gourmandises...")
+        if engine.dialect.name == 'postgresql':
+            # Introspection pour trouver le vrai nom de l'enum
+            result = conn.execute(text("SELECT t.typname FROM pg_type t JOIN pg_enum e ON t.oid = e.enumtypid WHERE e.enumlabel = 'Entrée' LIMIT 1"))
+            enum_name = result.scalar()
+            
+            if enum_name:
+                print(f"✅ Enum trouvé: {enum_name}")
+                conn.execute(text(f"ALTER TYPE {enum_name} ADD VALUE IF NOT EXISTS 'Gourmandises'"))
+                print(f"✅ Migration: Gourmandises ajouté à l'enum {enum_name}")
+            else:
+                conn.execute(text("ALTER TYPE categorierecette ADD VALUE IF NOT EXISTS 'Gourmandises'"))
+                print("✅ Migration: Gourmandises ajouté (défaut)")
+        else:
+            print("ℹ️ Migration ignorée (Pas PostgreSQL)")
+
 except Exception as e:
-    # SQLite ou valeur déjà existante
-    print(f"Migration note: {e}")
+    print(f"❌ Erreur Migration Gourmandises: {e}")
     pass
 
 # Application FastAPI
