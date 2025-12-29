@@ -21,7 +21,8 @@ from auth import (
     get_password_hash, authenticate_user, create_access_token,
     get_current_user, ACCESS_TOKEN_EXPIRE_MINUTES, get_user_by_email
 )
-from sqlalchemy import text
+# from sqlalchemy import text  <-- Removed redundant import
+
 
 # Création des tables
 Base.metadata.create_all(bind=engine)
@@ -501,4 +502,14 @@ def root():
         "docs": "/docs",
         "version": "2.0.0"
     }
+
+
+@app.get("/debug/error")
+def debug_error(db: Session = Depends(get_db)):
+    try:
+        results = db.query(Recipe).all()
+        return {"status": "ok", "count": len(results), "sample": [r.titre for r in results[:5]]}
+    except Exception as e:
+        import traceback
+        return {"status": "error", "message": str(e), "traceback": traceback.format_exc()}
 
