@@ -6,7 +6,7 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from sqlalchemy import func, desc, text
+from sqlalchemy import func, desc, text, or_
 from typing import List
 from datetime import timedelta
 
@@ -353,20 +353,22 @@ def search_frigo(search: FrigoSearchRequest, db: Session = Depends(get_db)):
     """
     Recherche "Frigo" - Trouve les recettes par ingrédients disponibles
     
-    Algorithme:
-    1. Normalise les ingrédients recherchés (lowercase, strip)
-    2. Trouve les recettes contenant AU MOINS UN ingrédient
-    3. Compte le nombre d'ingrédients matchés par recette
-    4. Trie par nombre de matchs (meilleurs matchs en premier)
+    Algorithme V2:
+    1. Recherche partielle (ILIKE) des ingrédients
+    2. Compte les matchs
+    3. Mode Strict: ne garde que les recettes où tous les ingrédients sont trouvés
     """
-    # Normaliser les ingrédients recherchés
-    search_ingredients = [ing.lower().strip() for ing in search.ingredients if ing.strip()]
+    # Nettoyer les entrées
+    search_ingredients = [ing.strip() for ing in search.ingredients if ing.strip()]
     
     if not search_ingredients:
         return []
     
+    # Construire la condition OR ILIKE pour chaque ingrédient cherché
+    # Ex: nom ILIKE %tomate% OR nom ILIKE %oeuf%
+    filters = [Ingredient.nom.ilike(f"%{ing}%") for ing in search_ingredients]
+    
     # Requête: trouver les recettes avec ingrédients correspondants
-    # Sous-requête pour compter les matchs par recette
     matching_recipes = (
         db.query(
             Recipe.id,
@@ -374,7 +376,7 @@ def search_frigo(search: FrigoSearchRequest, db: Session = Depends(get_db)):
             func.group_concat(Ingredient.nom).label('matched_names')
         )
         .join(Ingredient)
-        .filter(func.lower(Ingredient.nom).in_(search_ingredients))
+        .filter(or_(*filters)) # Utilisation de OR avec ILIKE
         .group_by(Recipe.id)
         .order_by(desc('match_count'))
         .all()
@@ -385,6 +387,14 @@ def search_frigo(search: FrigoSearchRequest, db: Session = Depends(get_db)):
     for recipe_id, match_count, matched_names in matching_recipes:
         recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
         
+        # Filtre Mode Strict
+        if search.strict_mode:
+            # On vérifie si on a trouvé tous les ingrédients nécessaires
+            # Note: len(recipe.ingredients) charge les ingrédients si pas déjà chargés
+            total_ingredients = len(recipe.ingredients)
+            if match_count < total_ingredients:
+                continue
+
         # Parser les noms matchés
         matched_list = matched_names.split(',') if matched_names else []
         

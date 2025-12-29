@@ -13,6 +13,7 @@ class CategorieRecette(str, Enum):
     PLAT = "Plat"
     DESSERT = "Dessert"
     GOURMANDISES = "Gourmandises"
+    BOISSON = "Boisson"
 
 
 # ============== USER SCHEMAS ==============
@@ -146,6 +147,7 @@ class RecipeListResponse(RecipeBase):
 
 class FrigoSearchRequest(BaseModel):
     ingredients: List[str] = Field(..., min_items=1)
+    strict_mode: bool = False # Si True, ne retourne que les recettes faisables totalement
 
 
 class FrigoSearchResult(BaseModel):
