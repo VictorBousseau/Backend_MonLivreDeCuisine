@@ -35,6 +35,15 @@ try:
 except Exception as e:
     pass
 
+# Migration: corriger les utilisateurs avec is_admin NULL
+try:
+    with engine.connect() as conn:
+        conn.execute(text("UPDATE users SET is_admin = FALSE WHERE is_admin IS NULL"))
+        conn.commit()
+        print("✅ Migration: is_admin NULL -> FALSE")
+except Exception as e:
+    pass
+
 # Migration: ajouter tags si la colonne n'existe pas
 try:
     with engine.connect() as conn:
