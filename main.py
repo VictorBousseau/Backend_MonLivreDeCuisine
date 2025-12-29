@@ -368,24 +368,33 @@ def search_frigo(search: FrigoSearchRequest, db: Session = Depends(get_db)):
     # Ex: nom ILIKE %tomate% OR nom ILIKE %oeuf%
     filters = [Ingredient.nom.ilike(f"%{ing}%") for ing in search_ingredients]
     
-    # Requête: trouver les recettes avec ingrédients correspondants
-    matching_recipes = (
-        db.query(
-            Recipe.id,
-            func.count(Ingredient.id).label('match_count'),
-            func.group_concat(Ingredient.nom).label('matched_names')
-        )
+    # Requête: trouver les (Recipe.id, Ingredient.nom) qui matchent
+    # On évite group_concat qui est spécifique au SGBD (SQLite vs Postgres)
+    matching_rows = (
+        db.query(Recipe.id, Ingredient.nom)
         .join(Ingredient)
         .filter(or_(*filters)) # Utilisation de OR avec ILIKE
-        .group_by(Recipe.id)
-        .order_by(desc('match_count'))
         .all()
     )
     
+    # Grouper par recette en Python
+    matches_map = {} # {recipe_id: [nom1, nom2, ...]}
+    for r_id, ing_nom in matching_rows:
+        if r_id not in matches_map:
+            matches_map[r_id] = []
+        matches_map[r_id].append(ing_nom)
+    
+    # Trier par nombre de matchs décroissant
+    sorted_stats = sorted(matches_map.items(), key=lambda item: len(item[1]), reverse=True)
+    
     # Construire les résultats
     results = []
-    for recipe_id, match_count, matched_names in matching_recipes:
+    for recipe_id, matched_names in sorted_stats:
         recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
+        if not recipe:
+            continue
+        
+        match_count = len(matched_names)
         
         # Filtre Mode Strict
         if search.strict_mode:
@@ -395,13 +404,10 @@ def search_frigo(search: FrigoSearchRequest, db: Session = Depends(get_db)):
             if match_count < total_ingredients:
                 continue
 
-        # Parser les noms matchés
-        matched_list = matched_names.split(',') if matched_names else []
-        
         results.append(FrigoSearchResult(
             recipe=RecipeListResponse.model_validate(recipe),
             match_count=match_count,
-            matched_ingredients=matched_list
+            matched_ingredients=matched_names
         ))
     
     return results
